@@ -30,3 +30,10 @@ print(is_within)
 
 
 # %%
+import geopandas as gpd
+from shapely.geometry import Polygon
+gdf = gpd.read_file('/Users/rwang/Library/CloudStorage/OneDrive-SharedLibraries-RMI/Climate Action Engine - Documents/EJIndex - Flare/Data/EJScreen_2023/EJSCREEN_2023.gdb.zip')
+# %%
+# Add a buffer of 5000 meters
+gdf['buffered_geometry'] = gdf.buffer(5000)
+# %%
