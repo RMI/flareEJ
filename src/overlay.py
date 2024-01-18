@@ -14,9 +14,9 @@ import folium
 
 #%%
 
-# df = pd.read_csv(f'{mykey.sharepoint}/Data/Data Samples/BG.csv')
-
 #import shape files
+
+# df = pd.read_csv(f'{mykey.sharepoint}/Data/Data Samples/BG.csv')
 
 #crs = EPSG:3857 WGS84 metre
 block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/AllJoinBG.shp')
@@ -26,70 +26,52 @@ block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/All
 flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/VIIRS_flaring_data/USA_2022.shp')
 
 #Change flare crs to be in metres
-flare_df = flare_df.to_crs(3857)
-#%%
-
+flare_df = flare_df.to_crs(block_df.crs)
 
 #%%
 
-
-# base = block_df.plot(color='white', edgecolor='black')
-# flare_df.plot(ax=base, marker='*', color='red', markersize=2);
-    
-
 #%%
-
-
-#%%
+#create buffer distance
 buffer_distance = 5000 #we want 5 km
 flare_df['buffered_geometry'] = flare_df['geometry'].buffer(buffer_distance)
 
-#%%
 
 
-#%%
+#replace old point geometry with buffered geometry
 flare_sub = flare_df[['ID 2022','buffered_geometry']].copy(deep=True)
 flare_sub.rename(columns={'buffered_geometry':'geometry','ID 2022':'Flare ID'}, inplace=True)
 
 block_sub = block_df[['ID','geometry']].copy(deep=True)
 block_sub.rename(columns={'ID':'Block Group ID'}, inplace=True)
 
-#%%
 
-#%%
-overlay_df = flare_sub.overlay(block_sub, how="intersection")
-# newdf.plot()
-
-# base = block_df.plot(color='white', edgecolor='black')
-# flare_sub.plot(ax=base, color='red',alpha=0.5);
-#%%
-
-#%%
-
-flare_sub['area_flare'] = flare_sub.area
 
 block_sub['area_block'] = block_sub.area
+flare_sub['area_flare'] = flare_sub.area
 
-# Performing overlay funcion
-gdf_joined = gpd.overlay(flare_sub,block_sub, how='intersection')
+#Find intersecting geometry for each flare/bg combination with overlap
+gdf_joined = gpd.overlay(block_sub,flare_sub, how='intersection')
 
 # Calculating the areas of the newly-created geometries
 gdf_joined['area_joined'] = gdf_joined.area
 
 # # Calculating the areas of the newly-created geometries in relation 
 # # to the original grid cells
-gdf_joined['percent_blockgroup_covered_by_flare'] = ((gdf_joined['area_joined'] / 
-                                                   gdf_joined['area_block'])*100)
+gdf_joined['fraction_blockgroup_covered_by_flare'] = ((gdf_joined['area_joined'] / 
+                                                   gdf_joined['area_block']))
+
+#Some rounding issues may produce more than 100...catch those
+gdf_joined['fraction_blockgroup_covered_by_flare'] = gdf_joined['fraction_blockgroup_covered_by_flare'].apply(lambda x: 1 if x > 1 else x)
 #%%
 
-#%%
 
+#%%
 
 gdf_block = block_sub.to_crs("EPSG:4326") 
 gdf_flare = flare_sub.to_crs("EPSG:4326") 
-gdf_overlay = overlay_df.to_crs("EPSG:4326") 
+gdf_overlay = gdf_joined.to_crs("EPSG:4326") 
 
-gdf_joined_test = gdf_joined[gdf_joined['percent_blockgroup_covered_by_flare']>100].to_crs("EPSG:4326") 
+gdf_joined_test = gdf_joined[gdf_joined['fraction_blockgroup_covered_by_flare']==1].to_crs("EPSG:4326") 
 gdf_block_test = gdf_block[gdf_block['Block Group ID'].isin(gdf_joined_test['Block Group ID'])]
 gdf_flare_test = gdf_flare[gdf_flare['Flare ID'].isin(gdf_joined_test['Flare ID'])]
 
@@ -130,7 +112,11 @@ for _, r in gdf_joined_test.iterrows():
     geo_j.add_to(m)
 m
 
-
 #%%
-gdf_joined['percent_blockgroup_covered_by_flare'] = gdf_joined['percent_blockgroup_covered_by_flare'].apply(lambda x: 1 if x > 1 else x)
+
+#run test
+flare_grouped = gdf_joined.groupby('Flare ID').agg({'area_joined':'sum',
+                                    'area_flare':'first'})
+
+flare_grouped['flare_coverage'] = flare_grouped['area_joined']/flare_grouped['area_flare']
 #%%
