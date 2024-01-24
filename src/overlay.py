@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import folium
 
 
-def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance,export_file_name):
+def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance):
 
     #crs should be in metres
 
@@ -38,35 +38,38 @@ def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance,expor
     gdf_joined = gpd.overlay(polygone_sub,point_sub, how='intersection')
 
     # Calculating the areas of the newly-created geometries
-    gdf_joined['area_joined'] = gdf_joined.area
+    gdf_joined['area_join'] = gdf_joined.area
 
     # # Calculating the areas of the newly-created geometries in relation 
     # # to the original grid cells
-    gdf_joined['fraction_blockgroup_covered_by_flare'] = ((gdf_joined['area_joined'] / 
+    gdf_joined['fraction_blockgroup_covered_by_flare'] = ((gdf_joined['area_join'] / 
                                                     gdf_joined['area_block']))
 
     #Some rounding issues may produce more than 100...catch those
     gdf_joined['fraction_blockgroup_covered_by_flare'] = gdf_joined['fraction_blockgroup_covered_by_flare'].apply(lambda x: 1 if x > 1 else x)
 
+    #merge the geometiries from flare and blockgroup back in
 
     #run test
-    flare_grouped = gdf_joined.groupby('flare_id').agg({'area_joined':'sum',
-                                        'area_flare':'first'})
+    # flare_grouped = gdf_joined.groupby('flare_id').agg({'area_joined':'sum',
+    #                                     'area_flare':'first'})
 
-    flare_grouped['flare_coverage'] = flare_grouped['area_joined']/flare_grouped['area_flare']
-
-    #export
-    gdf_joined.to_csv(f'{mykey.sharepoint}/Data/January Data/{export_file_name}.csv')
+    # flare_grouped['flare_coverage'] = flare_grouped['area_joined']/flare_grouped['area_flare']
+    return gdf_joined
 
 if __name__=='__main__':
 
     #import shape files
     #crs = EPSG:3857 WGS84 metre
     block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/AllJoinBG.shp')
-    block_df.rename(columns={'ID':'block_group_id'}, inplace=True)
+    block_df.rename(columns={'ID':'block_id'}, inplace=True)
 
     #crs = EPSG:4326 WGS84 geodetic latitude (degree)
     flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/VIIRS_flaring_data/USA_2022.shp')
     flare_df.rename(columns={'ID 2022':'flare_id'}, inplace=True)
 
-    calculate_percent_overlay(block_df, flare_df, 5000,'flare_blockgroup_overlay')
+    gdf_joined = calculate_percent_overlay(block_df, flare_df, 5000)
+
+    #export
+    gdf_joined.to_file(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.shp')
+    gdf_joined.pd.to_csv(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.csv')
