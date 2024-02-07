@@ -29,7 +29,7 @@ def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance):
     point_sub = point_df[['flare_id','buffered_geometry']].copy(deep=True)
     point_sub.rename(columns={'buffered_geometry':'geometry'}, inplace=True)
 
-    polygone_sub = polygone_df[['block_id','geometry']].copy(deep=True)
+    polygone_sub = polygone_df[['block_group_id','geometry']].copy(deep=True)
     
     polygone_sub['area_block'] = polygone_sub.area
     point_sub['area_flare'] = point_sub.area
@@ -62,7 +62,7 @@ if __name__=='__main__':
     #import shape files
     #crs = EPSG:3857 WGS84 metre
     block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/AllJoinBG.shp')
-    block_df.rename(columns={'ID':'block_id'}, inplace=True)
+    block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
 
     #crs = EPSG:4326 WGS84 geodetic latitude (degree)
     flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/VIIRS_flaring_data/USA_2022.shp')
@@ -72,4 +72,4 @@ if __name__=='__main__':
 
     #export
     gdf_joined.to_file(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.shp')
-    gdf_joined.pd.to_csv(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.csv')
+    gdf_joined.to_csv(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.csv', index=False)
