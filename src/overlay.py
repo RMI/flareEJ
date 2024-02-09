@@ -1,4 +1,4 @@
-
+#%%
 import sys
 sys.path.append('..')
 from keys import MyKeys
@@ -11,7 +11,7 @@ from shapely.geometry import Polygon, LineString, Point
 import matplotlib.pyplot as plt
 import folium
 
-
+#%%
 def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance):
 
     #crs should be in metres
@@ -57,19 +57,22 @@ def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance):
     # flare_grouped['flare_coverage'] = flare_grouped['area_joined']/flare_grouped['area_flare']
     return gdf_joined
 
+
 if __name__=='__main__':
 
     #import shape files
     #crs = EPSG:3857 WGS84 metre
-    block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/AllJoinBG.shp')
+    block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
     block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
 
     #crs = EPSG:4326 WGS84 geodetic latitude (degree)
-    flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/VIIRS_flaring_data/USA_2022.shp')
+    flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/CleanedFlares/CleanedFlares.shp')
     flare_df.rename(columns={'ID 2022':'flare_id'}, inplace=True)
 
     gdf_joined = calculate_percent_overlay(block_df, flare_df, 5000)
 
     #export
-    gdf_joined.to_file(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.shp')
-    gdf_joined.to_csv(f'{mykey.sharepoint}/Data/January Data/flare_blockgroup_overlay.csv', index=False)
+    gdf_joined.to_file(f'{mykey.sharepoint}/Data/Final Data/flare_blockgroup_overlay.shp')
+    gdf_joined.to_csv(f'{mykey.sharepoint}/Data/Final Data/flare_blockgroup_overlay.csv', index=False)
+
+
