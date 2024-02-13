@@ -15,7 +15,7 @@ import scipy.stats as ss
 
 #%%
 
-block_df = pd.read_csv(f'{mykey.sharepoint}/Data/Final Data/AttributesAddedCsv.csv')
+block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
 
 block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
 block_df['block_group_id'] = block_df['block_group_id'].apply(str)
@@ -37,6 +37,7 @@ block_df['bg_avg_flare_detection'] = block_df['DetectionS']/block_df['FlareCou_1
 #fill NA with zeros where no flares are detected
 block_df['bg_avg_flare_detection'] = block_df['bg_avg_flare_detection'].fillna(0)
 
+#scale the flaring varibles so they can be summed
 flare_scale_columns = ['BCMSum','bg_flare_density','bg_avg_flare_detection']
 for x in flare_scale_columns:
     #Scale to 0-1
@@ -49,13 +50,16 @@ block_df['bg_flare_aggregate'] = block_df[[f'{x}_scale' for x in flare_scale_col
 #weighted percent of vulnerable categories. EJScreen how they do demographic
 block_df['bg_vulnerability'] = (.25*(block_df['PEOPCOLORP']))+(.25*(block_df['LOWINCPCT']))+(.125*(block_df['UNEMPPCT']))+(.125*(block_df['LINGISOPCT']))+(.125*(block_df['LESSHSPCT']))+(.125*(block_df['OVER64PCT']))+(.125*(block_df['UNDER5PCT']))
 
+#scale the flaring and vulnerability variables so they can be combined into an EJ indicator
 scale_variables = ['bg_flare_aggregate','bg_vulnerability']
 
 for s in scale_variables:
     block_df[f'{s}_scale'] = block_df[s]/block_df[s].max()
 
+#As a product of the other scaled variables, EJ does not need to be re-scaled
 block_df['bg_ej_scale'] = block_df['bg_vulnerability_scale']*block_df['bg_flare_aggregate_scale']
 
+#Create the z-scores at the state and national level for all scaled variables
 index_variables = ['bg_flare_aggregate_scale','bg_vulnerability_scale','bg_ej_scale']
 
 for i in index_variables:
@@ -63,7 +67,7 @@ for i in index_variables:
     block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_state']  = block_df.groupby('STATE_NAME')[i].transform(lambda x: ss.zscore(x))
 
 #%%
-
+#Rank and get the percentages for all the the indexes 
 rank_variables = ['bg_flare_index_national','bg_vulnerability_index_national','bg_ej_index_national']
 
 for v in rank_variables:
@@ -92,7 +96,9 @@ block_df.rename(columns = {'STATE_NAME':'state',
                             'area':'area_m2'
                             },inplace=True)
 
-EJ_df = block_df[['block_group_id','area_m2','bg_total_population',
+#%%
+
+EJ_df = block_df[['block_group_id','state','area_m2','bg_total_population',
  'bg_people_of_color_pct','bg_low_income_pct','bg_unemployment_pct',
  'bg_english_second_language_pct','bg_less_than_highschool_pct',
  'bg_over_64_pct','bg_under_5_pct',

@@ -17,36 +17,38 @@ import os
 
 
    
-
-block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Data Samples/BG_shapefile/AllJoinBG.shp')
+#%%
+block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
 block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
+#%%
 
 map_block_df = block_df[['block_group_id','geometry']].copy(deep=True)
 map_block_df.to_crs("EPSG:4326",inplace=True)
 block_json_path = f'{mykey.sharepoint}/Data/Data Samples/map_block.geojson'
 map_block_df.to_file(block_json_path, driver='GeoJSON')
 
-EJ_df = pd.read_csv(f'{mykey.sharepoint}/Data/Data Samples/BG.csv')
-EJ_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
-EJ_sub = EJ_df[['block_group_id','EJ_Flare_Percentile','Flare_Index_Percentile','SUP_percentile']].copy(deep=True)
+#%%
+EJ_df = pd.read_csv(f'{mykey.sharepoint}/Data/Final Data/block_ej.csv')
+EJ_sub = EJ_df[['block_group_id','bg_flare_index_national','bg_vulnerability_index_national','bg_ej_index_national','bg_flare_percentile_national','bg_ej_percentile_national']].copy(deep=True)
 blockgroup_tooltip = map_block_df.merge(EJ_sub, how='left', on='block_group_id')
 
-flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/VIIRS_flaring_data/USA_2022.shp')
+#%%
+flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/CleanedFlares/CleanedFlares.shp')
 flare_df.rename(columns={'ID 2022':'flare_id'}, inplace=True)
-flare_measures = pd.read_csv(f'{mykey.sharepoint}/Data/January Data/flare_measures.csv')
+flare_measures = pd.read_csv(f'{mykey.sharepoint}/Data/Final Data/flare_ej.csv')
 flare_measures['flare_id'] = flare_measures['flare_id'].astype(str)
-flare_measures_sub = flare_measures[['flare_id','impacted_population_radius', 'average_vulnerability','average_vulnerability_population']].copy(deep=True)
+flare_measures_sub = flare_measures[['flare_id','flare_bcm','flare_index_national','flare_ej_index_national']].copy(deep=True)
 
 flare_merge = flare_df.merge(flare_measures_sub, how='left', on='flare_id')
 
-
+#%%
 m = folium.Map(location=[31, -100], zoom_start=6)
 
 fg1 = folium.FeatureGroup(name='Flare Impact',overlay=False).add_to(m)
 fg2 = folium.FeatureGroup(name='EJ Index',overlay=False).add_to(m)
-fg3 = folium.FeatureGroup(name='Flares',overlay=True).add_to(m)
+# fg3 = folium.FeatureGroup(name='Flares',overlay=True).add_to(m)
 
-custom_scale = (EJ_sub['Flare_Index_Percentile'].quantile((0,0.2,0.4,0.6,0.8,1))).tolist()
+custom_scale = custom_scale = (EJ_sub['bg_flare_percentile_national'].quantile((0,0.2,0.4,0.6,0.8,1))).tolist()
 
 # flare_leg = cm.LinearColormap(["yellow", "orange", "red"], vmin=0, vmax=EJ_sub['Flare_Index_Percentile'].max())
 # m.add_child(flare_leg)
@@ -55,7 +57,7 @@ custom_scale = (EJ_sub['Flare_Index_Percentile'].quantile((0,0.2,0.4,0.6,0.8,1))
 flare_impact = folium.Choropleth(
         geo_data=block_json_path,
         data=EJ_sub,
-        columns=['block_group_id', 'Flare_Index_Percentile'],  
+        columns=['block_group_id', 'bg_flare_percentile_national'],  
         key_on='feature.properties.block_group_id', 
         threshold_scale=custom_scale, #use the custom scale we created for legend
         fill_color='YlOrRd',
@@ -74,10 +76,10 @@ folium.features.GeoJson(
                     style_function=lambda x: {'color':'black','fillColor':'transparent','weight':0.5},
                     tooltip=folium.features.GeoJsonTooltip(
                         fields=['block_group_id',
-                                'Flare_Index_Percentile',
+                                'bg_flare_index_national',
                                ],
-                        aliases=["Block Group ID:",
-                                 "Flare Index Percentile:",
+                        aliases=["Block Group ID",
+                                 "Flare Index",
                                 ], 
                         localize=True,
                         sticky=False,
@@ -98,7 +100,7 @@ folium.features.GeoJson(
 ej_index =  folium.Choropleth(
         geo_data=block_json_path,
         data=EJ_sub,
-        columns=['block_group_id', 'EJ_Flare_Percentile'],  
+        columns=['block_group_id', 'bg_ej_percentile_national'],  
         key_on='feature.properties.block_group_id', 
         threshold_scale=custom_scale, #use the custom scale we created for legend
         fill_color='YlGnBu',
@@ -120,14 +122,14 @@ folium.features.GeoJson(
                     style_function=lambda x: {'color':'black','fillColor':'transparent','weight':0.5},
                     tooltip=folium.features.GeoJsonTooltip(
                         fields=['block_group_id',
-                                'Flare_Index_Percentile',
-                                'SUP_percentile',
-                                'EJ_Flare_Percentile' 
+                                'bg_flare_index_national',
+                                'bg_vulnerability_index_national',
+                                'bg_ej_index_national' 
                                ],
                         aliases=["Block Group ID:",
-                                 "Flare Index Percentile:",
-                                 "Vulnerability Index Percentile:",
-                                 "Environmental Justice Index Percentile:"
+                                 "Flare Index:",
+                                 "Vulnerability Index:",
+                                 "Environmental Justice Index:"
                                 ], 
                         localize=True,
                         sticky=False,
@@ -147,19 +149,19 @@ folium.features.GeoJson(
 # flare_gjson.add_to(fg3)
 
 
-#Loop through each row in the dataframe
-for i,row in flare_df.iterrows():
-    html=f'<h5> Flare Info</h5><p>Flare ID:{row["flare_id"]}<br>Flare BCM:{row["BCM 2022"]}</p>'
-    #Setup the content of the popup
-    iframe = folium.IFrame(html=html)
+# #Loop through each row in the dataframe
+# for i,row in flare_merge.iterrows():
+#     html=f'<h5> Flare Info</h5><p>Flare ID:{row["flare_id"]}<br>Flare BCM:{row["flare_bcm"]}</p>'
+#     #Setup the content of the popup
+#     iframe = folium.IFrame(html=html)
     
-    #Initialise the popup using the iframe
-    popup = folium.Popup(iframe, min_width=300, max_width=300)
+#     #Initialise the popup using the iframe
+#     popup = folium.Popup(iframe, min_width=300, max_width=300)
 
     
-    #Add each row to the map
-    folium.CircleMarker(location=[row['Latitude'],row['Longitude']],radius=3, fill_color='red',
-                  popup = popup).add_to(fg3)
+#     #Add each row to the map
+#     folium.CircleMarker(location=[row['Latitude'],row['Longitude']],radius=3, fill_color='red',
+#                   popup = popup).add_to(fg3)
 
 
 # folium.features.GeoJson(
@@ -195,4 +197,7 @@ for i,row in flare_df.iterrows():
 folium.TileLayer('cartodbpositron',overlay=True,name="Base Map").add_to(m)
 folium.LayerControl(collapsed=False).add_to(m)
 
-m.save(f'{mykey.sharepoint}/Data/January Data/heat_map.html')
+m
+
+# m.save(f'{mykey.sharepoint}/Data/January Data/heat_map.html')
+#%%
