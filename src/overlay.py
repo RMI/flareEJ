@@ -57,13 +57,42 @@ def calculate_percent_overlay(polygone_df, point_df, point_buffer_distance):
     # flare_grouped['flare_coverage'] = flare_grouped['area_joined']/flare_grouped['area_flare']
     return gdf_joined
 
+#%%
+def match_geospatial_data(df1, df2):
+
+    #get in same crs
+    df2 = df2.to_crs(epsg=3857)
+    df1 = df1.to_crs(epsg=3857)
+    
+    if df1.crs != df2.crs:
+        raise ValueError("The two GeoDataFrames do not have the same CRS.")
+
+    # Perform a spatial join between df1 and df2
+    matched_df = gpd.sjoin(df1, df2, how="left", op='intersects')
+
+    # Return the new GeoDataFrame
+    return matched_df
+#%%
+
 
 if __name__=='__main__':
 
+    #%%
+    #crs = EPSG:4326 WGS84 geodetic latitude (degree)
+    basin_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/MajorBasins')
+    basin_df.rename(columns={'NAME':'basin_name'}, inplace=True)
+    basin_sub = basin_df[['basin_name','geometry']].copy(deep=True)
+    basin_sub['basin_name'] = basin_sub['basin_name'].fillna('Eagle Ford')
+    #%%
+    
+    #%%
     #import shape files
     #crs = EPSG:3857 WGS84 metre
     block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
     block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
+    #%%
+    block_sub = block_df[['block_group_id','geometry']].copy(deep=True)
+    #%%
 
     #crs = EPSG:4326 WGS84 geodetic latitude (degree)
     flare_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/CleanedFlares/CleanedFlares.shp')
@@ -75,4 +104,13 @@ if __name__=='__main__':
     gdf_joined.to_file(f'{mykey.sharepoint}/Data/Final Data/flare_blockgroup_overlay.shp')
     gdf_joined.to_csv(f'{mykey.sharepoint}/Data/Final Data/flare_blockgroup_overlay.csv', index=False)
 
+    
+    #%%
+    basin_blockgroup = match_geospatial_data(block_sub, basin_sub)
+    basin_blockgroup.drop(columns=['index_right'], inplace=True)
 
+
+    # %%
+    basin_blockgroup.to_file(f'{mykey.sharepoint}/Data/Final Data/basin_blockgroup_overlay.shp')
+    basin_blockgroup[['block_group_id','basin_name']].to_csv(f'{mykey.sharepoint}/Data/Final Data/basin_blockgroup_overlay.csv', index=False)
+    # %%

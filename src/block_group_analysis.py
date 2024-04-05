@@ -5,7 +5,7 @@ from keys import MyKeys
 mykey = MyKeys("../config.ini")
 
 import pandas as pd
-import numpy as n
+import numpy as np
 import geopandas as gpd
 import geopy
 from shapely.geometry import Polygon, LineString, Point
@@ -58,6 +58,10 @@ for s in scale_variables:
 
 #As a product of the other scaled variables, EJ does not need to be re-scaled
 block_df['bg_ej_scale'] = block_df['bg_vulnerability_scale']*block_df['bg_flare_aggregate_scale']
+
+#Convert all places with zero population to have Nan for the EJ and Vulnerabilty variables
+block_df.loc[block_df['ACSTOTPOP'] == 0, 'bg_ej_scale'] = np.nan
+block_df.loc[block_df['ACSTOTPOP'] == 0, 'bg_vulnerability_scale'] = np.nan
 
 #Create the z-scores at the state and national level for all scaled variables
 index_variables = ['bg_flare_aggregate_scale','bg_vulnerability_scale','bg_ej_scale']
@@ -112,6 +116,11 @@ EJ_df = block_df[['block_group_id','state','area_m2','bg_total_population',
  'bg_vulnerability_rank_national','bg_vulnerability_percentile_national','bg_vulnerability_rank_state','bg_vulnerability_percentile_state',
  'bg_ej_rank_national','bg_ej_percentile_national','bg_ej_rank_state','bg_ej_percentile_state',
  ]].copy(deep=True)
+
+#%%
+
+
+#%%
 
 EJ_df.to_csv(f'{mykey.sharepoint}/Data/Final Data/block_ej.csv')
 # %%
