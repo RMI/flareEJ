@@ -12,11 +12,14 @@ from shapely.geometry import Polygon, LineString, Point
 import matplotlib.pyplot as plt
 import folium
 import scipy.stats as ss
+import numpy as np
 
 #%%
 
-block_df = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
+block_df_raw = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
 
+#%%
+block_df = block_df_raw.copy(deep=True)
 block_df.rename(columns={'OBJECTID':'block_group_id'}, inplace=True)
 block_df['block_group_id'] = block_df['block_group_id'].apply(str)
 block_df['ACSTOTPOP'] = block_df['ACSTOTPOP'].apply(int)
@@ -59,16 +62,32 @@ for s in scale_variables:
 #As a product of the other scaled variables, EJ does not need to be re-scaled
 block_df['bg_ej_scale'] = block_df['bg_vulnerability_scale']*block_df['bg_flare_aggregate_scale']
 
+#%%
 #Convert all places with zero population to have Nan for the EJ and Vulnerabilty variables
 block_df.loc[block_df['ACSTOTPOP'] == 0, 'bg_ej_scale'] = np.nan
 block_df.loc[block_df['ACSTOTPOP'] == 0, 'bg_vulnerability_scale'] = np.nan
+#%%
+
+# Get rows where 'ACSTOTPOP' is greater than zero
+positive_population_df = block_df[block_df['ACSTOTPOP'] > 0]
+# Check if 'bg_ej_scale' or 'bg_vulnerability_scale' are null
+if positive_population_df[['bg_ej_scale', 'bg_vulnerability_scale']].isna().any().any():
+    raise ValueError("Alert: 'bg_ej_scale' or 'bg_vulnerability_scale' are null for one or more rows where 'ACSTOTPOP' is greater than zero.")
+
+no_population_df = block_df[(block_df['ACSTOTPOP'] == 0) | (block_df['ACSTOTPOP'].isna())]
+# Check if 'bg_ej_scale' or 'bg_vulnerability_scale' are not null
+if no_population_df[['bg_ej_scale', 'bg_vulnerability_scale']].notnull().any().any():
+    raise ValueError("Alert: 'bg_ej_scale' or 'bg_vulnerability_scale' are notnull for one or more rows where 'ACSTOTPOP' is than zero.")
+
+#%%
 
 #Create the z-scores at the state and national level for all scaled variables
 index_variables = ['bg_flare_aggregate_scale','bg_vulnerability_scale','bg_ej_scale']
 
 for i in index_variables:
-    block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_national'] = ss.zscore(block_df[i])
-    block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_state']  = block_df.groupby('STATE_NAME')[i].transform(lambda x: ss.zscore(x))
+    # block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_national'] = ss.zscore(block_df[i])
+    block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_national'] = (block_df[i] - np.nanmean(block_df[i])) / np.nanstd(block_df[i])
+    block_df[f'{i.replace("_scale","").replace("_aggregate","")}_index_state']  = block_df.groupby('STATE_NAME')[i].transform(lambda x: (x - np.nanmean(x)) / np.nanstd(x))
 
 #%%
 #Rank and get the percentages for all the the indexes 
@@ -81,6 +100,17 @@ for v in rank_variables:
     block_df[f'{v.replace("_index_national","")}_rank_state'] = block_df.groupby(['STATE_NAME'])[v].rank(method="dense", ascending=False)
     block_df[f'{v.replace("_index_national","")}_percentile_state'] = block_df.groupby(['STATE_NAME'])[v].rank(pct=True)
 
+#%%
+# Get rows where 'ACSTOTPOP' is greater than zero
+positive_population_df = block_df[block_df['ACSTOTPOP'] > 0]
+# Check if 'bg_ej_scale' or 'bg_vulnerability_scale' are null
+if positive_population_df[['bg_ej_index_national', 'bg_ej_rank_national', 'bg_ej_percentile_national']].isna().any().any():
+    raise ValueError("Alert: 'ej scores are null for one or more rows where 'ACSTOTPOP' is greater than zero.")
+
+no_population_df = block_df[(block_df['ACSTOTPOP'] == 0) | (block_df['ACSTOTPOP'].isna())]
+# Check if 'bg_ej_scale' or 'bg_vulnerability_scale' are not null
+if no_population_df[['bg_ej_index_national', 'bg_ej_rank_national', 'bg_ej_percentile_national']].notnull().any().any():
+    raise ValueError("Alert: ej scores are notnull for one or more rows where 'ACSTOTPOP' is than zero.")
 
 #%%
 
