@@ -85,7 +85,7 @@ flare_measures['flare_ej_scale'] = flare_measures['flare_aggregate_scale']*flare
 index_variables = ['flare_aggregate_scale','flare_vulnerability_scale','flare_ej_scale']
 
 for i in index_variables:
-    flare_measures[f'{i.replace("_scale","").replace("_aggregate","")}_index_national'] = ss.zscore(flare_measures[i])
+    flare_measures[f'{i.replace("_scale","").replace("_aggregate","")}_index_national'] = flare_measures.zscore(flare_measures[i])
     flare_measures[f'{i.replace("_scale","").replace("_aggregate","")}_index_state']  = flare_measures.groupby('state')[i].transform(lambda x: ss.zscore(x))
 
 
