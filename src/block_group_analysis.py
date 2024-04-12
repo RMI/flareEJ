@@ -16,7 +16,7 @@ import numpy as np
 
 #%%
 
-block_df_raw = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/AttributesAdded.shp')
+block_df_raw = gpd.read_file(f'{mykey.sharepoint}/Data/Final Data/AttributesAdded/Attributes.shp')
 
 #%%
 block_df = block_df_raw.copy(deep=True)
@@ -115,6 +115,7 @@ if no_population_df[['bg_ej_index_national', 'bg_ej_rank_national', 'bg_ej_perce
 #%%
 
 block_df.rename(columns = {'STATE_NAME':'state',
+                           'CNTY_NAME':'county',
                            'ACSTOTPOP':'bg_total_population',
                             'PEOPCOLORP':'bg_people_of_color_pct',
                             'LOWINCPCT':'bg_low_income_pct',
@@ -132,7 +133,7 @@ block_df.rename(columns = {'STATE_NAME':'state',
 
 #%%
 
-EJ_df = block_df[['block_group_id','state','area_m2','bg_total_population',
+EJ_df = block_df[['block_group_id','state','county','area_m2','bg_total_population',
  'bg_people_of_color_pct','bg_low_income_pct','bg_unemployment_pct',
  'bg_english_second_language_pct','bg_less_than_highschool_pct',
  'bg_over_64_pct','bg_under_5_pct',
@@ -150,7 +151,5 @@ EJ_df = block_df[['block_group_id','state','area_m2','bg_total_population',
 #%%
 
 
-#%%
-
-EJ_df.to_csv(f'{mykey.sharepoint}/Data/Final Data/block_ej.csv')
+EJ_df.to_csv(f'{mykey.sharepoint}/Data/Final Data/block_ej.csv', index=False)
 # %%
