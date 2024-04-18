@@ -53,6 +53,7 @@ wavg_overlap = lambda x: np.ma.average(np.ma.array(x, mask=np.isnan(x)), weights
 wavg_population = lambda x: np.ma.average(np.ma.array(x, mask=np.isnan(x)), weights=merge_analysis.loc[x.index, "bg_population_impacted_by_flare"]) if ((np.any(merge_analysis.loc[x.index, "bg_population_impacted_by_flare"]!= 0)) and np.any(pd.notnull(x))) else np.average(np.ma.array(x, mask=np.isnan(x))) if np.any(pd.notnull(x)) else np.nan
 
 flare_measures = merge_analysis.groupby('flare_id').agg(state=('state','first'),
+                                                        basin = ('basin_name','first'),
                                                         flare_impacted_population_bg=('bg_total_population','sum'),
                                                         flare_bcm = ('BCM 2022','first'),
                                                         flare_detection = ('Detection','first'),
